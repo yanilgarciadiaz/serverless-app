@@ -7,7 +7,7 @@ locals {
 
 # S3: archivos subidos desde la app (bucket privado)
 resource "aws_s3_bucket" "uploads" {
-  bucket        = "${var.project_name}-uploads-${data.aws_caller_identity.current.account_id}"
+  bucket        = lower("${var.project_name}-uploads-${data.aws_caller_identity.current.account_id}")
   force_destroy = true
 }
 
