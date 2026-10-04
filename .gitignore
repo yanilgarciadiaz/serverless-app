@@ -1,0 +1,22 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+
+# Secretos y entornos
+.env
+*.pem
+
+# Compilados y dependencias
+target/
+node_modules/
+*.zip
+
+# Archivos subidos en pruebas locales
+uploads/
+
+# Editor y sistema
+.vscode/
+.idea/
+.DS_Store
