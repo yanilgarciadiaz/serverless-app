@@ -21,19 +21,22 @@ public class FileController {
 
     @PostMapping("/upload")
     public ResponseEntity<Map<String, String>> uploadFile(@RequestParam("file") MultipartFile file) {
-        // 1. Guardar el archivo
+        // 1. Guardar el archivo (S3 en la nube, carpeta local en tu PC)
         String fileName = fileStorageService.store(file);
 
-        // 2. URL de acceso de forma dinámica
-        String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath()
-                .path("/api/files/download/")
-                .path(fileName)
-                .toUriString();
+        // 2. URL de acceso: en S3 es una URL temporal firmada
+        String fileUrl = fileStorageService.getFileUrl(fileName);
+        if (fileUrl == null) {
+            fileUrl = ServletUriComponentsBuilder.fromCurrentContextPath()
+                    .path("/api/files/download/")
+                    .path(fileName)
+                    .toUriString();
+        }
 
-        // 3.respuesta JSON con los datos del archivo guardado
+        // 3. Respuesta JSON (misma forma que antes, la app móvil no cambia)
         Map<String, String> response = new HashMap<>();
         response.put("fileName", fileName);
-        response.put("url", fileDownloadUri);
+        response.put("url", fileUrl);
 
         return ResponseEntity.ok(response);
     }
