@@ -38,6 +38,14 @@
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
 		</dependency>
+
+		<!-- AWS Lambda: adaptador para Spring Boot 4 -->
+		<dependency>
+			<groupId>com.amazonaws.serverless</groupId>
+			<artifactId>aws-serverless-java-container-springboot4</artifactId>
+			<version>3.0.2</version>
+		</dependency>
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa-test</artifactId>
@@ -74,6 +82,7 @@
 	</dependencies>
 
 	<build>
+		<finalName>hex-p1</finalName>
 		<plugins>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
@@ -111,6 +120,27 @@
 									<artifactId>lombok</artifactId>
 								</path>
 							</annotationProcessorPaths>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- Genera target/hex-p1-lambda.zip (clases + carpeta lib/) para Lambda -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<version>3.7.1</version>
+				<executions>
+					<execution>
+						<id>lambda-zip</id>
+						<phase>package</phase>
+						<goals>
+							<goal>single</goal>
+						</goals>
+						<configuration>
+							<descriptors>
+								<descriptor>src/assembly/lambda.xml</descriptor>
+							</descriptors>
 						</configuration>
 					</execution>
 				</executions>
