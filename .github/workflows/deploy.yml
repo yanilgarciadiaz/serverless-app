@@ -1,0 +1,90 @@
+name: Deploy Serverless
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Evita dos despliegues al mismo tiempo (Terraform bloquea el estado)
+concurrency:
+  group: deploy-serverless
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      # Los secretos llegan a Terraform como variables TF_VAR_*
+      TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
+      TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
+
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Instalar Java 17 y dependencias
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Build (compilar backend)
+        working-directory: backend
+        run: mvn -B -ntp -DskipTests clean compile
+
+      - name: Test (pruebas del backend)
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: mvn -B -ntp test
+
+      - name: Empaquetar Lambda (zip)
+        working-directory: backend
+        run: |
+          mvn -B -ntp -DskipTests package
+          ls -lh target/hex-p1-lambda.zip
+
+      - name: Configurar credenciales de AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Instalar Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.4
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init -input=false
+
+      - name: Terraform Validate
+        working-directory: terraform
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: terraform
+        run: terraform plan -input=false -out=tfplan
+
+      - name: Terraform Apply
+        working-directory: terraform
+        run: terraform apply -input=false -auto-approve tfplan
+
+      - name: Deploy Lambda - verificar despliegue
+        working-directory: terraform
+        run: |
+          URL=$(terraform output -raw mobile_base_url)
+          echo "API desplegada en: $URL"
+          echo "Funcion Lambda: $(terraform output -raw lambda_function_name)"
+          curl -s -o /dev/null -w "Respuesta de prueba: HTTP %{http_code}\n" --max-time 60 \
+            -X POST "$URL/auth/login" -H "Content-Type: application/json" \
+            -d '{"username":"x","password":"x"}' || true
