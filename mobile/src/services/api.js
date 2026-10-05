@@ -1,11 +1,11 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Nota: 10.0.2.2 es la IP especial del emulador Android para acceder al localhost de tu PC
-const API_BASE_URL = 'http://10.0.2.2:8080/api';
+const API_BASE_URL = 'https://4odzm8nff9.execute-api.us-east-2.amazonaws.com/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 60000, // la primera petición puede tardar por el arranque en frío
   headers: {
     'Content-Type': 'application/json',
   },
