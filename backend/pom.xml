@@ -101,6 +101,22 @@
 			<artifactId>url-connection-client</artifactId>
 			<version>${aws.sdk.version}</version>
 		</dependency>
+		<!-- AWS SDK: SNS -->
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>sns</artifactId>
+			<version>${aws.sdk.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>software.amazon.awssdk</groupId>
+					<artifactId>netty-nio-client</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>software.amazon.awssdk</groupId>
+					<artifactId>apache-client</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>		
 	</dependencies>
 
 	<build>

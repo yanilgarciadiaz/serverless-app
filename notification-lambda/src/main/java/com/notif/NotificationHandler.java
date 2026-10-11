@@ -1,4 +1,4 @@
-package com.notif;
+package main.java.com.notif;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
