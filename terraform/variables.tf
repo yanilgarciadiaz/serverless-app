@@ -40,3 +40,9 @@ variable "jwt_secret" {
   type        = string
   sensitive   = true
 }
+
+variable "sender_email" {
+  description = "Correo remitente verificado en SES"
+  type        = string
+  sensitive   = true
+}

@@ -19,3 +19,15 @@ output "uploads_bucket" {
 output "log_group" {
   value = aws_cloudwatch_log_group.lambda.name
 }
+
+output "sns_topic_arn" {
+  value = aws_sns_topic.notifications.arn
+}
+
+output "sqs_queue_url" {
+  value = aws_sqs_queue.notifications.id
+}
+
+output "sqs_queue_arn" {
+  value = aws_sqs_queue.notifications.arn
+}

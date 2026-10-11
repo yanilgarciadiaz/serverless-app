@@ -89,6 +89,7 @@ resource "aws_lambda_function" "api" {
       S3_BUCKET                                  = aws_s3_bucket.uploads.bucket
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE = "2"
       JAVA_TOOL_OPTIONS                          = "-XX:+TieredCompilation -XX:TieredStopAtLevel=1"
+      SNS_TOPIC_ARN                              = aws_sns_topic.notifications.arn
     }
   }
 
@@ -130,4 +131,85 @@ resource "aws_lambda_permission" "apigw" {
   function_name = aws_lambda_function.api.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.http.execution_arn}/*/*"
+}
+
+
+# MENSAJERÍA: SNS -> SQS
+
+# SNS
+resource "aws_sns_topic" "notifications" {
+  name = "${var.project_name}-notifications-topic"
+}
+
+# SQS: cola de mensajes fallidos (después de 3 intentos)
+resource "aws_sqs_queue" "notifications_dlq" {
+  name                      = "${var.project_name}-notifications-dlq"
+  message_retention_seconds = 1209600
+}
+
+# SQS: cola principal que activa la notification-lambda
+resource "aws_sqs_queue" "notifications" {
+  name                       = "${var.project_name}-notifications-queue"
+  visibility_timeout_seconds = 180
+  message_retention_seconds  = 86400
+
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.notifications_dlq.arn
+    maxReceiveCount     = 3
+  })
+}
+
+# Permiso: solo este tópico SNS puede escribir en la cola
+data "aws_iam_policy_document" "sqs_from_sns" {
+  statement {
+    sid       = "AllowSNSPublish"
+    effect    = "Allow"
+    actions   = ["sqs:SendMessage"]
+    resources = [aws_sqs_queue.notifications.arn]
+
+    principals {
+      type        = "Service"
+      identifiers = ["sns.amazonaws.com"]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_sns_topic.notifications.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "notifications" {
+  queue_url = aws_sqs_queue.notifications.id
+  policy    = data.aws_iam_policy_document.sqs_from_sns.json
+}
+
+# Suscripción SNS -> SQS (el mensaje llega tal cual, sin envoltorio de SNS)
+resource "aws_sns_topic_subscription" "notifications_sqs" {
+  topic_arn            = aws_sns_topic.notifications.arn
+  protocol             = "sqs"
+  endpoint             = aws_sqs_queue.notifications.arn
+  raw_message_delivery = true
+
+  depends_on = [aws_sqs_queue_policy.notifications]
+}
+
+# SES: identidad del remitente (AWS envía un correo de verificación)
+resource "aws_ses_email_identity" "sender" {
+  email = var.sender_email
+}
+
+# Permiso para que la Lambda principal publique en SNS
+data "aws_iam_policy_document" "lambda_sns" {
+  statement {
+    actions   = ["sns:Publish"]
+    resources = [aws_sns_topic.notifications.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "lambda_sns" {
+  name   = "${local.function_name}-sns-publish"
+  role   = aws_iam_role.lambda.id
+  policy = data.aws_iam_policy_document.lambda_sns.json
 }

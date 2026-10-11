@@ -21,6 +21,7 @@ jobs:
       # Los secretos llegan a Terraform como variables TF_VAR_*
       TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
       TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
+      TF_VAR_sender_email: ${{ secrets.SENDER_EMAIL }}
 
     steps:
       - name: Descargar codigo
