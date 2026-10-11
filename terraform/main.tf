@@ -213,3 +213,71 @@ resource "aws_iam_role_policy" "lambda_sns" {
   role   = aws_iam_role.lambda.id
   policy = data.aws_iam_policy_document.lambda_sns.json
 }
+
+
+# NOTIFICATION LAMBDA (SQS -> correo con SES)
+
+locals {
+  notif_zip = "${path.module}/../notification-lambda/target/notification-lambda.zip"
+}
+
+resource "aws_iam_role" "notification" {
+  name               = "notification-lambda-role"
+  assume_role_policy = data.aws_iam_policy_document.lambda_assume.json
+}
+
+# Leer la cola SQS + escribir logs en CloudWatch
+resource "aws_iam_role_policy_attachment" "notification_sqs" {
+  role       = aws_iam_role.notification.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaSQSQueueExecutionRole"
+}
+
+# Enviar correos con SES
+data "aws_iam_policy_document" "notification_ses" {
+  statement {
+    actions   = ["ses:SendEmail", "ses:SendRawEmail"]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_role_policy" "notification_ses" {
+  name   = "notification-lambda-ses"
+  role   = aws_iam_role.notification.id
+  policy = data.aws_iam_policy_document.notification_ses.json
+}
+
+resource "aws_cloudwatch_log_group" "notification" {
+  name              = "/aws/lambda/notification-lambda"
+  retention_in_days = 7
+}
+
+resource "aws_lambda_function" "notification" {
+  function_name = "notification-lambda"
+  role          = aws_iam_role.notification.arn
+  runtime       = "java17"
+  handler       = "com.notif.NotificationHandler::handleRequest"
+  memory_size   = 512
+  timeout       = 30
+
+  filename         = local.notif_zip
+  source_code_hash = filebase64sha256(local.notif_zip)
+
+  environment {
+    variables = {
+      SENDER_EMAIL      = var.sender_email
+      JAVA_TOOL_OPTIONS = "-XX:+TieredCompilation -XX:TieredStopAtLevel=1"
+    }
+  }
+
+  depends_on = [
+    aws_cloudwatch_log_group.notification,
+    aws_iam_role_policy_attachment.notification_sqs,
+  ]
+}
+
+# Event Source Mapping: cada mensaje de la cola activa la Lambda
+resource "aws_lambda_event_source_mapping" "sqs_to_notification" {
+  event_source_arn = aws_sqs_queue.notifications.arn
+  function_name    = aws_lambda_function.notification.arn
+  batch_size       = 1
+}

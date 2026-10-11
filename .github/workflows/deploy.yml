@@ -50,6 +50,12 @@ jobs:
         run: |
           mvn -B -ntp -DskipTests package
           ls -lh target/hex-p1-lambda.zip
+      
+      - name: Empaquetar notification-lambda (zip)
+        working-directory: notification-lambda
+        run: |
+          mvn -B -ntp -DskipTests package
+          ls -lh target/notification-lambda.zip
 
       - name: Configurar credenciales de AWS
         uses: aws-actions/configure-aws-credentials@v4

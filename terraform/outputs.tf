@@ -31,3 +31,11 @@ output "sqs_queue_url" {
 output "sqs_queue_arn" {
   value = aws_sqs_queue.notifications.arn
 }
+
+output "notification_lambda_name" {
+  value = aws_lambda_function.notification.function_name
+}
+
+output "notification_log_group" {
+  value = aws_cloudwatch_log_group.notification.name
+}
