@@ -3,6 +3,7 @@ import { StyleSheet, View, TouchableOpacity, Text } from 'react-native';
 import LoginScreen from './src/views/LoginScreen';
 import UsersScreen from './src/views/UsersScreen';
 import UploadFileScreen from './src/views/UploadFileScreen';
+import NotificationScreen from './src/views/NotificationScreen';
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -15,7 +16,9 @@ export default function App() {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        {currentTab === 'users' ? <UsersScreen /> : <UploadFileScreen />}
+        {currentTab === 'users' && <UsersScreen />}
+        {currentTab === 'upload' && <UploadFileScreen />}
+        {currentTab === 'notifications' && <NotificationScreen />}
       </View>
 
       <View style={styles.navBar}>
@@ -31,6 +34,13 @@ export default function App() {
           onPress={() => setCurrentTab('upload')}
         >
           <Text style={styles.navText}>Archivos</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.navButton, currentTab === 'notifications' && styles.activeTab]} 
+          onPress={() => setCurrentTab('notifications')}
+        >
+          <Text style={styles.navText}>Correo</Text>
         </TouchableOpacity>
       </View>
     </View>
